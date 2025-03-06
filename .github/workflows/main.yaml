@@ -1,0 +1,57 @@
+name: Build Beta
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+    contents: write
+    packages: write
+    id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: './frontend/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm install --legacy-peer-deps
+
+      - name: Build
+        working-directory: ./frontend
+        run: npm run build
+
+      - name: Zip build files
+        run: |
+          cd frontend/build
+          zip -r ../../release.zip .
+          cd ../..
+
+      - name: Build Docker image (amd64)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: hass-panel
+
+      - name: Save Docker image (hass-panel)
+        run: docker save -o hass-panel.tar hass-panel
+
+      - name: Upload Docker image artifact (hass-panel)
+        uses: actions/upload-artifact@v4
+        with:
+          name: hass-panel
+          path: hass-panel.tar
