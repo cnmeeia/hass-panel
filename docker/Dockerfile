@@ -1,58 +1,38 @@
 FROM ghcr.io/hassio-addons/base:17.1.0
 
 # 安装依赖
-RUN apk add --no-cache nginx gettext curl jq unzip tzdata python3 py3-pip rsync vim supervisor 
+RUN apk add --no-cache nginx gettext curl jq unzip tzdata python3 py3-pip rsync vim supervisor
 
-# 安装go2rtc 判断系统架构
-COPY docker/software/go2rtc_* /tmp/
-RUN case "$(uname -m)" in \
-        x86_64) \
-            cp /tmp/go2rtc_linux_x86_64 /usr/local/bin/go2rtc ;; \
-        aarch64) \
-            cp /tmp/go2rtc_linux_aarch64 /usr/local/bin/go2rtc ;; \
-        armv7l) \
-            cp /tmp/go2rtc_linux_armv7l /usr/local/bin/go2rtc ;; \
-        armv6l) \
-            cp /tmp/go2rtc_linux_armv6l /usr/local/bin/go2rtc ;; \
-        *) \
-            echo "Unsupported architecture: $(uname -m)" && exit 1 ;; \
-    esac && \
-    chmod +x /usr/local/bin/go2rtc && \
-    rm -f /tmp/go2rtc_*
-
-
+# 安装go2rtc
+COPY docker/software/go2rtc_linux_x86_64 /usr/local/bin/go2rtc
+RUN chmod +x /usr/local/bin/go2rtc
 
 # 设置时区
 ENV TZ=Asia/Shanghai
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
     echo $TZ > /etc/timezone
 
-
-    
 # 安装 Python 依赖
 RUN pip install -i https://pypi.tuna.tsinghua.edu.cn/simple \
-    fastapi \
-    uvicorn \
-    requests \
-    loguru \
-    toml \
-    omegaconf \
-    aiohttp \
-    python-multipart \
-    pyyaml \
-    sqlalchemy \
-    pyjwt \
-    passlib[bcrypt] \
-    apscheduler \
-    onvif-zeep
+        fastapi \
+        uvicorn \
+        requests \
+        loguru \
+        toml \
+        omegaconf \
+        aiohttp \
+        python-multipart \
+        pyyaml \
+        sqlalchemy \
+        pyjwt \
+        passlib[bcrypt] \
+        apscheduler
 
 # 创建必要的目录
-RUN mkdir -p /config/hass-panel  # 为SQLite数据库创建目录
-
-# 复制go2rtc配置文件
-COPY docker/config/go2rtc.yaml /etc/go2rtc.yaml
+RUN mkdir -p /config/hass-panel
 
 # 复制配置文件
+COPY docker/config/go2rtc.yaml /etc/go2rtc.yaml
 COPY docker/config/nginx.conf /etc/nginx/http.d/default.conf
 
 # 创建工作目录
@@ -61,6 +41,7 @@ WORKDIR /app
 # 复制前端文件
 COPY frontend/build /app
 
+# 创建后端工作目录
 WORKDIR /backend
 
 # 复制后端文件
@@ -80,4 +61,4 @@ COPY docker/config/supervisord.conf /etc/supervisord.conf
 EXPOSE 5123 5124
 
 # 使用启动脚本
-ENTRYPOINT ["/docker-entrypoint.sh"] 
+ENTRYPOINT ["/docker-entrypoint.sh"]
